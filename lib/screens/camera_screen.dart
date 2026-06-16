@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,9 +30,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   StreamSubscription? _detectionSub;
   bool _isDetecting = false;
   bool _isProcessing = false;
+  bool _isRetrying = false;
+  bool _isInitializing = true;
   int _frameCount = 0;
   int _lastProcessTimestamp = 0;
   LandmarkExtractor? _extractor;
+  String? _initError;
 
   static const _processInterval = Duration(milliseconds: 100);
 
@@ -42,28 +47,67 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _initCamera() async {
-    final cameras = await ref.read(cameraProvider.future);
-    if (cameras.isEmpty) return;
-
-    _cameraDescription = cameras.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.front,
-      orElse: () => cameras.first,
-    );
-
-    _controller = CameraController(
-      _cameraDescription!,
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
-
     try {
+      final cameras = await ref.read(cameraProvider.future);
+      if (cameras.isEmpty) {
+        _setInitError('No camera found on this device.');
+        return;
+      }
+
+      _cameraDescription = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+
+      _controller = CameraController(
+        _cameraDescription!,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+
       await _controller!.initialize();
       _extractor = await LandmarkExtractor.create();
+
+      if (_extractor!.status == ExtractorStatus.error) {
+        _setInitError(_extractor!.errorMessage ?? 'ML Kit initialization failed.');
+        return;
+      }
+
       ref.read(isCameraInitializedProvider.notifier).state = true;
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _isInitializing = false);
+    } on MissingPluginException {
+      _setInitError(
+        defaultTargetPlatform == TargetPlatform.macOS
+            ? 'Camera not available on macOS. Detection uses simulated data for testing.'
+            : 'Camera plugin not available. Ensure native build is configured correctly.',
+      );
     } catch (e) {
-      debugPrint('Camera init error: $e');
+      _setInitError('Camera initialization failed: $e');
     }
+  }
+
+  void _setInitError(String message) {
+    _extractor?.dispose();
+    _extractor = null;
+    _controller?.dispose();
+    _controller = null;
+    if (!mounted) return;
+    setState(() {
+      _isInitializing = false;
+      _isRetrying = false;
+      _initError = message;
+    });
+  }
+
+  Future<void> _retryInit() async {
+    setState(() => _isRetrying = true);
+    _initError = null;
+    _extractor?.dispose();
+    _extractor = null;
+    _controller?.dispose();
+    _controller = null;
+    ref.read(isCameraInitializedProvider.notifier).state = false;
+    await _initCamera();
   }
 
   void _startDetection() {
@@ -159,6 +203,97 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     ref.read(detectionResultsProvider.notifier).state = [];
   }
 
+  Widget _buildBody(bool initialized, List<HabitDetectionResult> results, DetectionEngineState engineState) {
+    final theme = Theme.of(context);
+
+    if (_isRetrying) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Reinitializing camera\u2026'),
+          ],
+        ),
+      );
+    }
+
+    if (_initError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+              const SizedBox(height: 16),
+              Text('Detection Unavailable', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                _initError!,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _retryInit,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!initialized || _controller == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Stack(
+      children: [
+        CameraPreview(_controller!),
+        CameraOverlay(results: results),
+        if (_extractor != null && _extractor!.status != ExtractorStatus.ready)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.orange.shade800.withValues(alpha: 0.9),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'ML Kit not ready',
+                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: DetectionIndicator(
+            isRunning: engineState == DetectionEngineState.running,
+            results: results,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -194,7 +329,13 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
           },
         ),
         actions: [
-          if (engineState == DetectionEngineState.running)
+          if (_initError != null || _isRetrying || _isInitializing)
+            TextButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Unavailable'),
+            )
+          else if (engineState == DetectionEngineState.running)
             TextButton.icon(
               onPressed: _stopDetection,
               icon: const Icon(Icons.stop),
@@ -208,22 +349,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             ),
         ],
       ),
-      body: initialized && _controller != null
-          ? Stack(
-              children: [
-                CameraPreview(_controller!),
-                CameraOverlay(results: results),
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: DetectionIndicator(
-                    isRunning: engineState == DetectionEngineState.running,
-                    results: results,
-                  ),
-                ),
-              ],
-            )
-          : const Center(child: CircularProgressIndicator()),
+      body: _buildBody(initialized, results, engineState),
     );
   }
 }

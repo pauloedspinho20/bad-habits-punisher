@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_mesh_detection/google_mlkit_face_mesh_detection.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:hand_landmarker/hand_landmarker.dart';
@@ -16,17 +17,14 @@ abstract class LandmarkExtractor {
   Future<LandmarkData> extract({CameraImage? cameraImage, CameraDescription? camera});
   void dispose();
   ExtractorStatus get status;
+  String? get errorMessage;
 
   static Future<LandmarkExtractor> create() async {
     if (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.android) {
-      try {
-        final mlKit = MlKitExtractor();
-        await mlKit.initialize();
-        return mlKit;
-      } catch (e) {
-        debugPrint('ML Kit init failed, using simulated: $e');
-      }
+      final mlKit = MlKitExtractor();
+      await mlKit.initialize();
+      return mlKit;
     }
     final simulated = SimulatedExtractor();
     await simulated.initialize();
@@ -35,39 +33,61 @@ abstract class LandmarkExtractor {
 }
 
 class MlKitExtractor extends LandmarkExtractor {
-  ExtractorStatus _status = ExtractorStatus.unavailable;
+  ExtractorStatus _status = ExtractorStatus.initializing;
+  String? _errorMessage;
+
   PoseDetector? _poseDetector;
   FaceMeshDetector? _faceMeshDetector;
   HandLandmarkerPlugin? _handLandmarker;
 
   @override
   ExtractorStatus get status => _status;
+  @override
+  String? get errorMessage => _errorMessage;
 
   @override
   Future<void> initialize() async {
     _status = ExtractorStatus.initializing;
+    int successes = 0;
+    int total = 0;
+
     try {
       _poseDetector = PoseDetector(
         options: PoseDetectorOptions(mode: PoseDetectionMode.stream),
       );
+      successes++;
     } catch (e) {
       debugPrint('PoseDetector init failed: $e');
     }
+    total++;
+
     try {
       _faceMeshDetector = FaceMeshDetector(
         option: FaceMeshDetectorOptions.faceMesh,
       );
+      successes++;
     } catch (e) {
       debugPrint('FaceMeshDetector init failed: $e');
     }
-    try {
-      if (defaultTargetPlatform == TargetPlatform.android) {
+    total++;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      total++;
+      try {
         _handLandmarker = HandLandmarkerPlugin.create(numHands: 1);
+        successes++;
+      } catch (e) {
+        debugPrint('HandLandmarker init failed: $e');
       }
-    } catch (e) {
-      debugPrint('HandLandmarker init failed: $e');
     }
-    _status = ExtractorStatus.ready;
+
+    if (successes > 0) {
+      _status = ExtractorStatus.ready;
+    } else {
+      _status = ExtractorStatus.error;
+      _errorMessage = 'ML Kit native libraries unavailable. '
+          'Ensure device supports Google ML Kit and native build is correct.';
+    }
   }
 
   @override
@@ -178,6 +198,9 @@ class MlKitExtractor extends LandmarkExtractor {
     try {
       final poses = await _poseDetector!.processImage(inputImage);
       if (poses.isNotEmpty) return _flattenPose(poses.first);
+    } on MissingPluginException catch (e) {
+      debugPrint('Pose native plugin missing: $e');
+      _poseDetector = null;
     } catch (e) {
       debugPrint('Pose processing error: $e');
     }
@@ -189,6 +212,9 @@ class MlKitExtractor extends LandmarkExtractor {
     try {
       final meshes = await _faceMeshDetector!.processImage(inputImage);
       if (meshes.isNotEmpty) return _flattenFaceMesh(meshes.first);
+    } on MissingPluginException catch (e) {
+      debugPrint('FaceMesh native plugin missing: $e');
+      _faceMeshDetector = null;
     } catch (e) {
       debugPrint('FaceMesh processing error: $e');
     }

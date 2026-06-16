@@ -10,6 +10,8 @@ class SimulatedExtractor extends LandmarkExtractor {
 
   @override
   ExtractorStatus get status => _status;
+  @override
+  String? get errorMessage => null;
 
   int _frame = 0;
 
