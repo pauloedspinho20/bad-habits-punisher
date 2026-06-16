@@ -24,10 +24,15 @@ class CameraScreen extends ConsumerStatefulWidget {
 class _CameraScreenState extends ConsumerState<CameraScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
+  CameraDescription? _cameraDescription;
   StreamSubscription? _detectionSub;
-  Timer? _frameTimer;
   bool _isDetecting = false;
+  bool _isProcessing = false;
+  int _frameCount = 0;
+  int _lastProcessTimestamp = 0;
   LandmarkExtractor? _extractor;
+
+  static const _processInterval = Duration(milliseconds: 100);
 
   @override
   void initState() {
@@ -40,16 +45,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final cameras = await ref.read(cameraProvider.future);
     if (cameras.isEmpty) return;
 
-    final frontCamera = cameras.firstWhere(
+    _cameraDescription = cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => cameras.first,
     );
 
     _controller = CameraController(
-      frontCamera,
+      _cameraDescription!,
       ResolutionPreset.medium,
       enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.bgra8888,
     );
 
     try {
@@ -67,6 +71,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     engine.start();
     ref.read(detectionStateProvider.notifier).state = DetectionEngineState.running;
     _isDetecting = true;
+    _frameCount = 0;
+    _lastProcessTimestamp = 0;
 
     _detectionSub = engine.onEventsDetected.listen((events) {
       final recorder = ref.read(eventRecorderProvider);
@@ -76,34 +82,44 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       }
     });
 
-    _frameTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      if (!_isDetecting || _controller == null || !_controller!.value.isInitialized) return;
-      _processFrame();
-    });
+    _controller!.startImageStream(_onImageStream);
   }
 
-  Future<void> _processFrame() async {
-    if (_controller == null || _extractor == null) return;
+  void _onImageStream(CameraImage image) {
+    if (!_isDetecting || _isProcessing) return;
 
-    final engine = ref.read(detectionEngineProvider);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastProcessTimestamp < _processInterval.inMilliseconds) return;
 
-    LandmarkData data;
+    _lastProcessTimestamp = now;
+    _isProcessing = true;
+    _frameCount++;
+
+    _processFrame(image);
+  }
+
+  Future<void> _processFrame(CameraImage image) async {
     try {
-      data = await _extractor!.extract();
+      if (_extractor == null) return;
+
+      final engine = ref.read(detectionEngineProvider);
+
+      final data = await _extractor!.extract(cameraImage: image, camera: _cameraDescription);
+
+      final results = engine.processFrame(
+        poseLandmarks: data.poseLandmarks,
+        faceLandmarks: data.faceLandmarks,
+        handLandmarks: data.handLandmarks,
+        imageWidth: data.imageWidth,
+        imageHeight: data.imageHeight,
+      );
+
+      ref.read(detectionResultsProvider.notifier).state = results;
     } catch (e) {
-      debugPrint('Extraction error: $e');
-      return;
+      debugPrint('Frame processing error: $e');
+    } finally {
+      _isProcessing = false;
     }
-
-    final results = engine.processFrame(
-      poseLandmarks: data.poseLandmarks,
-      faceLandmarks: data.faceLandmarks,
-      handLandmarks: data.handLandmarks,
-      imageWidth: data.imageWidth,
-      imageHeight: data.imageHeight,
-    );
-
-    ref.read(detectionResultsProvider.notifier).state = results;
   }
 
   void _showHabitAlert(DetectedEvent event) {
@@ -134,7 +150,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   void _stopDetection() {
     _isDetecting = false;
-    _frameTimer?.cancel();
+    if (_controller != null && _controller!.value.isStreamingImages) {
+      _controller!.stopImageStream();
+    }
     _detectionSub?.cancel();
     ref.read(detectionEngineProvider).stop();
     ref.read(detectionStateProvider.notifier).state = DetectionEngineState.idle;

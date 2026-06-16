@@ -19,7 +19,7 @@ class SimulatedExtractor extends LandmarkExtractor {
   }
 
   @override
-  Future<LandmarkData> extract({CameraImage? cameraImage}) async {
+  Future<LandmarkData> extract({CameraImage? cameraImage, CameraDescription? camera}) async {
     _frame++;
     return LandmarkData(
       poseLandmarks: _generatePoseLandmarks(),
