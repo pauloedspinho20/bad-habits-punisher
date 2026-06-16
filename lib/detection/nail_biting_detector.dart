@@ -1,0 +1,127 @@
+import 'habit_detection_result.dart';
+import 'habit_detector.dart';
+
+class NailBitingDetector extends HabitDetector {
+  @override
+  String get habitId => 'nail_biting';
+
+  @override
+  double sensitivityThreshold = 0.6;
+
+  final _biteHistory = <double>[];
+  static const int _smoothingWindow = 8;
+
+  static const _fingerTips = [4, 8, 12, 16, 20];
+  static const _fingerMcps = [1, 5, 9, 13, 17];
+  static const _fingerPips = [2, 6, 10, 14, 18];
+
+  @override
+  HabitDetectionResult process({
+    required List<double>? poseLandmarks,
+    required List<double>? faceLandmarks,
+    required List<double>? handLandmarks,
+    required double imageWidth,
+    required double imageHeight,
+  }) {
+    if (handLandmarks == null || handLandmarks.length < 21 * 3 ||
+        faceLandmarks == null || faceLandmarks.length < 478 * 3) {
+      return HabitDetectionResult(
+        habitId: habitId,
+        confidence: 0,
+        detected: false,
+      );
+    }
+
+    final upperLip = _lm(faceLandmarks, 13);
+    final lowerLip = _lm(faceLandmarks, 14);
+
+    if (upperLip == null || lowerLip == null) {
+      return HabitDetectionResult(
+        habitId: habitId,
+        confidence: 0,
+        detected: false,
+      );
+    }
+
+    final mouthX = (upperLip.$1 + lowerLip.$1) / 2;
+    final mouthY = (upperLip.$2 + lowerLip.$2) / 2;
+
+    double minDistance = double.infinity;
+    double maxCurl = 0;
+
+    for (var f = 0; f < _fingerTips.length; f++) {
+      final tip = _lm(handLandmarks, _fingerTips[f]);
+      final mcp = _lm(handLandmarks, _fingerMcps[f]);
+      final pip = _lm(handLandmarks, _fingerPips[f]);
+
+      if (tip == null || mcp == null || pip == null) continue;
+
+      final dx = tip.$1 - mouthX;
+      final dy = tip.$2 - mouthY;
+      final d = dx * dx + dy * dy;
+      if (d < minDistance) minDistance = d;
+
+      final mcpToPip = _distSq(mcp, pip);
+      final pipToTip = _distSq(pip, tip);
+      if (mcpToPip > 0) {
+        final curl = 1.0 - (pipToTip / mcpToPip).clamp(0.0, 1.0);
+        if (curl > maxCurl) maxCurl = curl;
+      }
+    }
+
+    final mouthOpenScore = _detectMouthOpen(faceLandmarks);
+
+    final proximityScore = minDistance < 0.008 ? 1.0 :
+        minDistance < 0.02 ? 0.7 :
+        minDistance < 0.04 ? 0.3 : 0.0;
+
+    final biteConfidence = proximityScore * 0.5 +
+        maxCurl * 0.3 +
+        mouthOpenScore * 0.2;
+
+    _biteHistory.add(biteConfidence);
+    if (_biteHistory.length > _smoothingWindow) {
+      _biteHistory.removeAt(0);
+    }
+
+    final smoothed = _biteHistory.reduce((a, b) => a + b) /
+        _biteHistory.length;
+    final detected = smoothed >= sensitivityThreshold;
+
+    return HabitDetectionResult(
+      habitId: habitId,
+      confidence: smoothed,
+      detected: detected,
+      signals: {
+        'min_distance': minDistance,
+        'max_curl': maxCurl,
+        'mouth_open': mouthOpenScore,
+      },
+    );
+  }
+
+  double _detectMouthOpen(List<double> faceLandmarks) {
+    final upperLip = _lm(faceLandmarks, 13);
+    final lowerLip = _lm(faceLandmarks, 14);
+    if (upperLip == null || lowerLip == null) return 0;
+    final jawDrop = (lowerLip.$2 - upperLip.$2).abs();
+    return (jawDrop / 0.04).clamp(0.0, 1.0);
+  }
+
+  double _distSq((double, double, double) a, (double, double, double) b) {
+    final dx = a.$1 - b.$1;
+    final dy = a.$2 - b.$2;
+    return dx * dx + dy * dy;
+  }
+
+  (double, double, double)? _lm(List<double> landmarks, int index) {
+    final i = index * 3;
+    if (i + 2 >= landmarks.length) return null;
+    return (landmarks[i], landmarks[i + 1], landmarks[i + 2]);
+  }
+
+  @override
+  void reset() {
+    _biteHistory.clear();
+  }
+}
