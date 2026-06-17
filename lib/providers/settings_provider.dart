@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/constants.dart';
 import '../database/database.dart';
 
 final settingsProvider = Provider<SettingsManager>((ref) {
@@ -22,8 +21,6 @@ final enabledHabitsCountProvider = FutureProvider<int>((ref) async {
   final habits = await ref.watch(enabledHabitsProvider.future);
   return habits.length;
 });
-
-final isPremiumProvider = StateProvider<bool>((ref) => false);
 
 class SettingsManager {
   final AppDatabase _db;

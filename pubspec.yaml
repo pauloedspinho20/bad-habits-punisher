@@ -47,9 +47,8 @@ dependencies:
   # mediapipe_face_mesh: ^1.8.0
   # flutter_pose_detection: ^0.4.1
 
-  # Monetization (later)
-  # revenuecat: ^1.0.0
-  # google_mobile_ads: ^5.1.0
+  # Monetization
+  purchases_flutter: ^10.2.3
 
 dev_dependencies:
   flutter_test:

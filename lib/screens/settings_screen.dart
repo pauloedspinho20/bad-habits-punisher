@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../app.dart';
 import '../core/constants.dart';
 import '../core/habit_config.dart';
 import '../database/database.dart';
+import '../providers/purchases_provider.dart';
 import '../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -65,7 +67,7 @@ class SettingsScreen extends ConsumerWidget {
               trailing: isPremium
                   ? null
                   : FilledButton.tonal(
-                      onPressed: () => _showUpgradeSheet(context),
+                      onPressed: () => showUpgradeSheet(context),
                       child: const Text('Upgrade'),
                     ),
             ),
@@ -80,35 +82,127 @@ class SettingsScreen extends ConsumerWidget {
     await db.setSetting('dark_mode', value.toString());
     ref.read(darkModeProvider.notifier).state = value;
   }
+}
 
-  void _showUpgradeSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.workspace_premium, size: 48, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text('Go Premium', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            const Text('Unlock all habits, unlimited history, detailed analytics, and more.'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: const Text('\$4.99/month \u00B7 Start Free Trial'),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Not now'),
-            ),
-          ],
-        ),
+void showUpgradeSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) => const _UpgradeSheetContent(),
+  );
+}
+
+class _UpgradeSheetContent extends ConsumerWidget {
+  const _UpgradeSheetContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offeringsAsync = ref.watch(offeringsProvider);
+    final inProgress = ref.watch(purchaseInProgressProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.workspace_premium, size: 48, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 16),
+          Text('Go Premium', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          const Text('Unlock all habits, unlimited history, detailed analytics, and more.'),
+          const SizedBox(height: 24),
+          offeringsAsync.when(
+            data: (offerings) {
+              final offering = offerings?.current;
+              final monthly = offering?.monthly;
+              if (monthly == null) return _FallbackPurchaseButton();
+              return _PackageButton(package: monthly);
+            },
+            loading: () => const CircularProgressIndicator(),
+            error: (_, __) => const _FallbackPurchaseButton(),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: inProgress
+                ? null
+                : () async {
+                    await ref.read(restorePurchasesProvider.future);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+            child: const Text('Restore Purchases'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: inProgress ? null : () => Navigator.pop(context),
+            child: const Text('Not now'),
+          ),
+        ],
       ),
     );
+  }
+}
+
+class _FallbackPurchaseButton extends ConsumerWidget {
+  const _FallbackPurchaseButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inProgress = ref.watch(purchaseInProgressProvider);
+
+    return FilledButton(
+      onPressed: inProgress
+          ? null
+          : () async {
+              final offerings = await ref.read(offeringsProvider.future);
+              final monthly = offerings?.current?.monthly;
+              if (monthly != null) {
+                await ref.read(purchasePackageProvider(monthly).future);
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      child: inProgress
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Text('Upgrade'),
+    );
+  }
+}
+
+class _PackageButton extends ConsumerWidget {
+  final Package package;
+
+  const _PackageButton({required this.package});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inProgress = ref.watch(purchaseInProgressProvider);
+    final product = package.storeProduct;
+    final priceString = product.priceString;
+    final period = _formatPeriod(product.subscriptionPeriod);
+
+    return FilledButton(
+      onPressed: inProgress
+          ? null
+          : () async {
+              await ref.read(purchasePackageProvider(package).future);
+              if (context.mounted) Navigator.pop(context);
+            },
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      child: inProgress
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : Text('$priceString / $period \u00B7 Start Free Trial'),
+    );
+  }
+
+  String _formatPeriod(String? iso) {
+    if (iso == null) return 'month';
+    switch (iso) {
+      case 'P1W': return 'week';
+      case 'P1M': return 'month';
+      case 'P3M': return '3 months';
+      case 'P6M': return '6 months';
+      case 'P1Y': return 'year';
+      default: return iso.replaceAll('P', '').replaceAll('M', ' months').replaceAll('W', ' weeks').replaceAll('Y', ' years');
+    }
   }
 }
 
@@ -219,30 +313,7 @@ class _HabitSettingsTile extends ConsumerWidget {
   void _showUpgradeSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.workspace_premium, size: 48, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text('Go Premium', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 8),
-            const Text('Unlock all habits, unlimited history, detailed analytics, and more.'),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-              child: const Text('\$4.99/month \u00B7 Start Free Trial'),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Not now'),
-            ),
-          ],
-        ),
-      ),
+      builder: (context) => const _UpgradeSheetContent(),
     );
   }
 }

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/habit_config.dart';
 import '../database/database.dart';
-import '../providers/settings_provider.dart';
+import '../providers/purchases_provider.dart';
 
 class HabitCard extends ConsumerWidget {
   final HabitConfig habit;

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'database/database.dart';
+import 'providers/purchases_provider.dart';
 import 'providers/punishment_provider.dart';
 import 'screens/camera_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -71,6 +72,8 @@ class _AppState extends ConsumerState<App> {
   }
 
   Future<void> _loadPreferences() async {
+    if (!mounted) return;
+    await initializePurchases(ref);
     final db = ref.read(databaseProvider);
     final darkModeVal = await db.getSetting('dark_mode');
     if (darkModeVal == 'true' && mounted) {
