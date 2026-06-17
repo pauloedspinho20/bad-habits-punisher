@@ -1425,6 +1425,318 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $PunishmentConfigsTable extends PunishmentConfigs
+    with TableInfo<$PunishmentConfigsTable, PunishmentConfig> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PunishmentConfigsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _habitIdMeta =
+      const VerificationMeta('habitId');
+  @override
+  late final GeneratedColumn<String> habitId = GeneratedColumn<String>(
+      'habit_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _vibrationMeta =
+      const VerificationMeta('vibration');
+  @override
+  late final GeneratedColumn<bool> vibration = GeneratedColumn<bool>(
+      'vibration', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("vibration" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _soundMeta = const VerificationMeta('sound');
+  @override
+  late final GeneratedColumn<bool> sound = GeneratedColumn<bool>(
+      'sound', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("sound" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _flashMeta = const VerificationMeta('flash');
+  @override
+  late final GeneratedColumn<bool> flash = GeneratedColumn<bool>(
+      'flash', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("flash" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _intensityMeta =
+      const VerificationMeta('intensity');
+  @override
+  late final GeneratedColumn<double> intensity = GeneratedColumn<double>(
+      'intensity', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0.5));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [habitId, vibration, sound, flash, intensity];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'punishment_configs';
+  @override
+  VerificationContext validateIntegrity(Insertable<PunishmentConfig> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('habit_id')) {
+      context.handle(_habitIdMeta,
+          habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta));
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('vibration')) {
+      context.handle(_vibrationMeta,
+          vibration.isAcceptableOrUnknown(data['vibration']!, _vibrationMeta));
+    }
+    if (data.containsKey('sound')) {
+      context.handle(
+          _soundMeta, sound.isAcceptableOrUnknown(data['sound']!, _soundMeta));
+    }
+    if (data.containsKey('flash')) {
+      context.handle(
+          _flashMeta, flash.isAcceptableOrUnknown(data['flash']!, _flashMeta));
+    }
+    if (data.containsKey('intensity')) {
+      context.handle(_intensityMeta,
+          intensity.isAcceptableOrUnknown(data['intensity']!, _intensityMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {habitId};
+  @override
+  PunishmentConfig map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PunishmentConfig(
+      habitId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}habit_id'])!,
+      vibration: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}vibration'])!,
+      sound: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}sound'])!,
+      flash: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}flash'])!,
+      intensity: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}intensity'])!,
+    );
+  }
+
+  @override
+  $PunishmentConfigsTable createAlias(String alias) {
+    return $PunishmentConfigsTable(attachedDatabase, alias);
+  }
+}
+
+class PunishmentConfig extends DataClass
+    implements Insertable<PunishmentConfig> {
+  final String habitId;
+  final bool vibration;
+  final bool sound;
+  final bool flash;
+  final double intensity;
+  const PunishmentConfig(
+      {required this.habitId,
+      required this.vibration,
+      required this.sound,
+      required this.flash,
+      required this.intensity});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['habit_id'] = Variable<String>(habitId);
+    map['vibration'] = Variable<bool>(vibration);
+    map['sound'] = Variable<bool>(sound);
+    map['flash'] = Variable<bool>(flash);
+    map['intensity'] = Variable<double>(intensity);
+    return map;
+  }
+
+  PunishmentConfigsCompanion toCompanion(bool nullToAbsent) {
+    return PunishmentConfigsCompanion(
+      habitId: Value(habitId),
+      vibration: Value(vibration),
+      sound: Value(sound),
+      flash: Value(flash),
+      intensity: Value(intensity),
+    );
+  }
+
+  factory PunishmentConfig.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PunishmentConfig(
+      habitId: serializer.fromJson<String>(json['habitId']),
+      vibration: serializer.fromJson<bool>(json['vibration']),
+      sound: serializer.fromJson<bool>(json['sound']),
+      flash: serializer.fromJson<bool>(json['flash']),
+      intensity: serializer.fromJson<double>(json['intensity']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'habitId': serializer.toJson<String>(habitId),
+      'vibration': serializer.toJson<bool>(vibration),
+      'sound': serializer.toJson<bool>(sound),
+      'flash': serializer.toJson<bool>(flash),
+      'intensity': serializer.toJson<double>(intensity),
+    };
+  }
+
+  PunishmentConfig copyWith(
+          {String? habitId,
+          bool? vibration,
+          bool? sound,
+          bool? flash,
+          double? intensity}) =>
+      PunishmentConfig(
+        habitId: habitId ?? this.habitId,
+        vibration: vibration ?? this.vibration,
+        sound: sound ?? this.sound,
+        flash: flash ?? this.flash,
+        intensity: intensity ?? this.intensity,
+      );
+  PunishmentConfig copyWithCompanion(PunishmentConfigsCompanion data) {
+    return PunishmentConfig(
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      vibration: data.vibration.present ? data.vibration.value : this.vibration,
+      sound: data.sound.present ? data.sound.value : this.sound,
+      flash: data.flash.present ? data.flash.value : this.flash,
+      intensity: data.intensity.present ? data.intensity.value : this.intensity,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PunishmentConfig(')
+          ..write('habitId: $habitId, ')
+          ..write('vibration: $vibration, ')
+          ..write('sound: $sound, ')
+          ..write('flash: $flash, ')
+          ..write('intensity: $intensity')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(habitId, vibration, sound, flash, intensity);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PunishmentConfig &&
+          other.habitId == this.habitId &&
+          other.vibration == this.vibration &&
+          other.sound == this.sound &&
+          other.flash == this.flash &&
+          other.intensity == this.intensity);
+}
+
+class PunishmentConfigsCompanion extends UpdateCompanion<PunishmentConfig> {
+  final Value<String> habitId;
+  final Value<bool> vibration;
+  final Value<bool> sound;
+  final Value<bool> flash;
+  final Value<double> intensity;
+  final Value<int> rowid;
+  const PunishmentConfigsCompanion({
+    this.habitId = const Value.absent(),
+    this.vibration = const Value.absent(),
+    this.sound = const Value.absent(),
+    this.flash = const Value.absent(),
+    this.intensity = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PunishmentConfigsCompanion.insert({
+    required String habitId,
+    this.vibration = const Value.absent(),
+    this.sound = const Value.absent(),
+    this.flash = const Value.absent(),
+    this.intensity = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : habitId = Value(habitId);
+  static Insertable<PunishmentConfig> custom({
+    Expression<String>? habitId,
+    Expression<bool>? vibration,
+    Expression<bool>? sound,
+    Expression<bool>? flash,
+    Expression<double>? intensity,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (habitId != null) 'habit_id': habitId,
+      if (vibration != null) 'vibration': vibration,
+      if (sound != null) 'sound': sound,
+      if (flash != null) 'flash': flash,
+      if (intensity != null) 'intensity': intensity,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PunishmentConfigsCompanion copyWith(
+      {Value<String>? habitId,
+      Value<bool>? vibration,
+      Value<bool>? sound,
+      Value<bool>? flash,
+      Value<double>? intensity,
+      Value<int>? rowid}) {
+    return PunishmentConfigsCompanion(
+      habitId: habitId ?? this.habitId,
+      vibration: vibration ?? this.vibration,
+      sound: sound ?? this.sound,
+      flash: flash ?? this.flash,
+      intensity: intensity ?? this.intensity,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (habitId.present) {
+      map['habit_id'] = Variable<String>(habitId.value);
+    }
+    if (vibration.present) {
+      map['vibration'] = Variable<bool>(vibration.value);
+    }
+    if (sound.present) {
+      map['sound'] = Variable<bool>(sound.value);
+    }
+    if (flash.present) {
+      map['flash'] = Variable<bool>(flash.value);
+    }
+    if (intensity.present) {
+      map['intensity'] = Variable<double>(intensity.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PunishmentConfigsCompanion(')
+          ..write('habitId: $habitId, ')
+          ..write('vibration: $vibration, ')
+          ..write('sound: $sound, ')
+          ..write('flash: $flash, ')
+          ..write('intensity: $intensity, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1434,12 +1746,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DailySummariesTable dailySummaries = $DailySummariesTable(this);
   late final $StreaksTable streaks = $StreaksTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $PunishmentConfigsTable punishmentConfigs =
+      $PunishmentConfigsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [habits, detectionEvents, dailySummaries, streaks, appSettings];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        habits,
+        detectionEvents,
+        dailySummaries,
+        streaks,
+        appSettings,
+        punishmentConfigs
+      ];
 }
 
 typedef $$HabitsTableCreateCompanionBuilder = HabitsCompanion Function({
@@ -2234,6 +2554,181 @@ typedef $$AppSettingsTableProcessedTableManager = ProcessedTableManager<
     (AppSetting, BaseReferences<_$AppDatabase, $AppSettingsTable, AppSetting>),
     AppSetting,
     PrefetchHooks Function()>;
+typedef $$PunishmentConfigsTableCreateCompanionBuilder
+    = PunishmentConfigsCompanion Function({
+  required String habitId,
+  Value<bool> vibration,
+  Value<bool> sound,
+  Value<bool> flash,
+  Value<double> intensity,
+  Value<int> rowid,
+});
+typedef $$PunishmentConfigsTableUpdateCompanionBuilder
+    = PunishmentConfigsCompanion Function({
+  Value<String> habitId,
+  Value<bool> vibration,
+  Value<bool> sound,
+  Value<bool> flash,
+  Value<double> intensity,
+  Value<int> rowid,
+});
+
+class $$PunishmentConfigsTableFilterComposer
+    extends Composer<_$AppDatabase, $PunishmentConfigsTable> {
+  $$PunishmentConfigsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get habitId => $composableBuilder(
+      column: $table.habitId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get vibration => $composableBuilder(
+      column: $table.vibration, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get sound => $composableBuilder(
+      column: $table.sound, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get flash => $composableBuilder(
+      column: $table.flash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get intensity => $composableBuilder(
+      column: $table.intensity, builder: (column) => ColumnFilters(column));
+}
+
+class $$PunishmentConfigsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PunishmentConfigsTable> {
+  $$PunishmentConfigsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get habitId => $composableBuilder(
+      column: $table.habitId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get vibration => $composableBuilder(
+      column: $table.vibration, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get sound => $composableBuilder(
+      column: $table.sound, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get flash => $composableBuilder(
+      column: $table.flash, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get intensity => $composableBuilder(
+      column: $table.intensity, builder: (column) => ColumnOrderings(column));
+}
+
+class $$PunishmentConfigsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PunishmentConfigsTable> {
+  $$PunishmentConfigsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get habitId =>
+      $composableBuilder(column: $table.habitId, builder: (column) => column);
+
+  GeneratedColumn<bool> get vibration =>
+      $composableBuilder(column: $table.vibration, builder: (column) => column);
+
+  GeneratedColumn<bool> get sound =>
+      $composableBuilder(column: $table.sound, builder: (column) => column);
+
+  GeneratedColumn<bool> get flash =>
+      $composableBuilder(column: $table.flash, builder: (column) => column);
+
+  GeneratedColumn<double> get intensity =>
+      $composableBuilder(column: $table.intensity, builder: (column) => column);
+}
+
+class $$PunishmentConfigsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $PunishmentConfigsTable,
+    PunishmentConfig,
+    $$PunishmentConfigsTableFilterComposer,
+    $$PunishmentConfigsTableOrderingComposer,
+    $$PunishmentConfigsTableAnnotationComposer,
+    $$PunishmentConfigsTableCreateCompanionBuilder,
+    $$PunishmentConfigsTableUpdateCompanionBuilder,
+    (
+      PunishmentConfig,
+      BaseReferences<_$AppDatabase, $PunishmentConfigsTable, PunishmentConfig>
+    ),
+    PunishmentConfig,
+    PrefetchHooks Function()> {
+  $$PunishmentConfigsTableTableManager(
+      _$AppDatabase db, $PunishmentConfigsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PunishmentConfigsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PunishmentConfigsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PunishmentConfigsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> habitId = const Value.absent(),
+            Value<bool> vibration = const Value.absent(),
+            Value<bool> sound = const Value.absent(),
+            Value<bool> flash = const Value.absent(),
+            Value<double> intensity = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PunishmentConfigsCompanion(
+            habitId: habitId,
+            vibration: vibration,
+            sound: sound,
+            flash: flash,
+            intensity: intensity,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String habitId,
+            Value<bool> vibration = const Value.absent(),
+            Value<bool> sound = const Value.absent(),
+            Value<bool> flash = const Value.absent(),
+            Value<double> intensity = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              PunishmentConfigsCompanion.insert(
+            habitId: habitId,
+            vibration: vibration,
+            sound: sound,
+            flash: flash,
+            intensity: intensity,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$PunishmentConfigsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $PunishmentConfigsTable,
+    PunishmentConfig,
+    $$PunishmentConfigsTableFilterComposer,
+    $$PunishmentConfigsTableOrderingComposer,
+    $$PunishmentConfigsTableAnnotationComposer,
+    $$PunishmentConfigsTableCreateCompanionBuilder,
+    $$PunishmentConfigsTableUpdateCompanionBuilder,
+    (
+      PunishmentConfig,
+      BaseReferences<_$AppDatabase, $PunishmentConfigsTable, PunishmentConfig>
+    ),
+    PunishmentConfig,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2248,4 +2743,6 @@ class $AppDatabaseManager {
       $$StreaksTableTableManager(_db, _db.streaks);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$PunishmentConfigsTableTableManager get punishmentConfigs =>
+      $$PunishmentConfigsTableTableManager(_db, _db.punishmentConfigs);
 }

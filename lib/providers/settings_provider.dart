@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/constants.dart';
 import '../database/database.dart';
 
 final settingsProvider = Provider<SettingsManager>((ref) {
@@ -16,6 +17,13 @@ final allHabitsProvider = FutureProvider<List<Habit>>((ref) async {
   final db = ref.watch(databaseProvider);
   return db.getHabits();
 });
+
+final enabledHabitsCountProvider = FutureProvider<int>((ref) async {
+  final habits = await ref.watch(enabledHabitsProvider.future);
+  return habits.length;
+});
+
+final isPremiumProvider = StateProvider<bool>((ref) => false);
 
 class SettingsManager {
   final AppDatabase _db;
@@ -52,5 +60,3 @@ class SettingsManager {
   Future<void> setDouble(String key, double value) =>
       _db.setSetting(key, value.toString());
 }
-
-final isPremiumProvider = StateProvider<bool>((ref) => false);

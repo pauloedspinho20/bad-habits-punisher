@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import 'core/constants.dart';
 import 'core/theme.dart';
+import 'database/database.dart';
+import 'providers/punishment_provider.dart';
 import 'screens/camera_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/punishment_settings_screen.dart';
 import 'screens/settings_screen.dart';
 
 final darkModeProvider = StateProvider<bool>((ref) => false);
@@ -41,15 +44,42 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: '/settings/punishments',
+        name: 'punishments',
+        builder: (context, state) => const PunishmentSettingsScreen(),
+      ),
     ],
   );
 });
 
-class App extends ConsumerWidget {
+class App extends ConsumerStatefulWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<App> createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> {
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(navigatorContextProvider.notifier).state = context;
+    });
+  }
+
+  Future<void> _loadPreferences() async {
+    final db = ref.read(databaseProvider);
+    final darkModeVal = await db.getSetting('dark_mode');
+    if (darkModeVal == 'true' && mounted) {
+      ref.read(darkModeProvider.notifier).state = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = ref.watch(darkModeProvider);
 
     return MaterialApp.router(

@@ -36,6 +36,7 @@ class DetectionEngine {
     required List<double>? handLandmarks,
     required double imageWidth,
     required double imageHeight,
+    Set<String>? enabledHabitIds,
   }) {
     if (_state != DetectionEngineState.running) return [];
 
@@ -46,6 +47,10 @@ class DetectionEngine {
     final events = <DetectedEvent>[];
 
     for (final detector in detectors) {
+      if (enabledHabitIds != null && !enabledHabitIds.contains(detector.habitId)) {
+        results.add(HabitDetectionResult(habitId: detector.habitId, detected: false, confidence: 0));
+        continue;
+      }
       final result = detector.process(
         poseLandmarks: poseLandmarks,
         faceLandmarks: faceLandmarks,

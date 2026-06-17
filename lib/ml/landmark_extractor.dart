@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -7,7 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_mesh_detection/google_mlkit_face_mesh_detection.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import 'package:hand_landmarker/hand_landmarker.dart';
+
+import 'hand_landmarker_stub.dart'
+    if (dart.library.io) 'hand_landmarker_real.dart';
 
 import 'landmark_data.dart';
 import 'simulated_extractor.dart';
@@ -155,12 +156,12 @@ class MlKitExtractor extends LandmarkExtractor {
           format = InputImageFormat.nv21;
           break;
         default:
-          format = Platform.isAndroid
+          format = defaultTargetPlatform == TargetPlatform.android
               ? InputImageFormat.yuv_420_888
               : InputImageFormat.bgra8888;
       }
 
-      if (Platform.isAndroid) {
+      if (defaultTargetPlatform == TargetPlatform.android) {
         final WriteBuffer allBytes = WriteBuffer();
         for (final plane in image.planes) {
           allBytes.putUint8List(plane.bytes);

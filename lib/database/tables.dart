@@ -52,3 +52,15 @@ class AppSettings extends Table {
   @override
   Set<Column> get primaryKey => {key};
 }
+
+class PunishmentConfigs extends Table {
+  TextColumn get habitId => text()();
+  BoolColumn get vibration => boolean().withDefault(const Constant(false))();
+  BoolColumn get sound => boolean().withDefault(const Constant(false))();
+  BoolColumn get flash => boolean().withDefault(const Constant(true))();
+  RealColumn get intensity =>
+      real().withDefault(const Constant(0.5))();
+
+  @override
+  Set<Column> get primaryKey => {habitId};
+}

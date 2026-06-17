@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
+import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import 'tables.dart';
 
@@ -16,19 +13,27 @@ part 'database.g.dart';
     DailySummaries,
     Streaks,
     AppSettings,
+    PunishmentConfigs,
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(driftDatabase(name: 'bad_habits'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _seedHabits();
+          await _seedPunishmentConfigs();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(punishmentConfigs);
+            await _seedPunishmentConfigs();
+          }
         },
       );
 
@@ -42,6 +47,18 @@ class AppDatabase extends _$AppDatabase {
         sensitivity: Value(h.sensitivity),
         sortOrder: Value(h.sortOrder),
       ));
+    }
+  }
+
+  Future<void> _seedPunishmentConfigs() async {
+    for (final id in _seedData.map((h) => h.id)) {
+      await into(punishmentConfigs).insert(
+        PunishmentConfigsCompanion(
+          habitId: Value(id),
+          flash: const Value(true),
+        ),
+        mode: InsertMode.insertOrIgnore,
+      );
     }
   }
 
@@ -158,6 +175,33 @@ class AppDatabase extends _$AppDatabase {
       mode: InsertMode.insertOrReplace,
     );
   }
+
+  Future<PunishmentConfig?> getPunishmentConfig(String habitId) async {
+    final results = await (select(punishmentConfigs)
+          ..where((p) => p.habitId.equals(habitId)))
+        .get();
+    return results.isEmpty ? null : results.first;
+  }
+
+  Future<List<PunishmentConfig>> getAllPunishmentConfigs() =>
+      select(punishmentConfigs).get();
+
+  Future<void> updatePunishmentConfig({
+    required String habitId,
+    bool? vibration,
+    bool? sound,
+    bool? flash,
+    double? intensity,
+  }) async {
+    await (update(punishmentConfigs)
+          ..where((p) => p.habitId.equals(habitId)))
+        .write(PunishmentConfigsCompanion(
+      vibration: vibration != null ? Value(vibration) : const Value.absent(),
+      sound: sound != null ? Value(sound) : const Value.absent(),
+      flash: flash != null ? Value(flash) : const Value.absent(),
+      intensity: intensity != null ? Value(intensity) : const Value.absent(),
+    ));
+  }
 }
 
 class _HabitSeed {
@@ -170,13 +214,4 @@ class _HabitSeed {
 
   const _HabitSeed(this.id, this.name, this.iconPath, this.enabled, this.sensitivity, this.sortOrder);
 }
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'bad_habits.sqlite'));
-    return NativeDatabase(file);
-  });
-}
-
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());

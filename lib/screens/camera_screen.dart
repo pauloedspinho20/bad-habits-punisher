@@ -7,12 +7,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../database/database.dart';
 import '../detection/detection_engine.dart';
 import '../detection/habit_detection_result.dart';
 import '../ml/landmark_data.dart';
 import '../ml/landmark_extractor.dart';
 import '../providers/camera_provider.dart';
 import '../providers/detection_provider.dart';
+import '../providers/punishment_provider.dart';
 import '../widgets/camera_overlay.dart';
 import '../widgets/detection_indicator.dart';
 
@@ -36,6 +38,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   int _lastProcessTimestamp = 0;
   LandmarkExtractor? _extractor;
   String? _initError;
+  Set<String> _enabledHabitIds = {};
 
   static const _processInterval = Duration(milliseconds: 100);
 
@@ -66,7 +69,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
 
       await _controller!.initialize();
+      if (!mounted) return;
       _extractor = await LandmarkExtractor.create();
+      if (!mounted) return;
 
       if (_extractor!.status == ExtractorStatus.error) {
         _setInitError(_extractor!.errorMessage ?? 'ML Kit initialization failed.');
@@ -112,6 +117,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   void _startDetection() {
     final engine = ref.read(detectionEngineProvider);
+    final db = ref.read(databaseProvider);
+
+    db.getEnabledHabits().then((enabled) {
+      _enabledHabitIds = enabled.map((h) => h.id).toSet();
+    });
+
     engine.start();
     ref.read(detectionStateProvider.notifier).state = DetectionEngineState.running;
     _isDetecting = true;
@@ -120,10 +131,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     _detectionSub = engine.onEventsDetected.listen((events) {
       final recorder = ref.read(eventRecorderProvider);
+      final punisher = ref.read(punishmentEngineProvider);
       for (final event in events) {
         recorder.recordEvent(event);
         _showHabitAlert(event);
       }
+      punisher.processEvents(events);
     });
 
     _controller!.startImageStream(_onImageStream);
@@ -156,6 +169,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
         handLandmarks: data.handLandmarks,
         imageWidth: data.imageWidth,
         imageHeight: data.imageHeight,
+        enabledHabitIds: _enabledHabitIds.isNotEmpty ? _enabledHabitIds : null,
       );
 
       ref.read(detectionResultsProvider.notifier).state = results;
@@ -297,7 +311,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopDetection();
+    _isDetecting = false;
+    _detectionSub?.cancel();
     _extractor?.dispose();
     _controller?.dispose();
     super.dispose();
