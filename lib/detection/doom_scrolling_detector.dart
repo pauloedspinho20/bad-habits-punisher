@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'detection_utils.dart';
 import 'habit_detection_result.dart';
 import 'habit_detector.dart';
 
@@ -10,11 +11,9 @@ class DoomScrollingDetector extends HabitDetector {
   @override
   double sensitivityThreshold = 0.5;
 
-  final _faceProximityHistory = <double>[];
-  static const int _smoothingWindow = 20;
-
-  int _closeFrames = 0;
-  static const int _minCloseFrames = 30;
+  final SmoothingBuffer _proximitySmoother = SmoothingBuffer(20);
+  final SmoothingBuffer _stillnessSmoother = SmoothingBuffer(10);
+  final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 8, decay: 3);
 
   @override
   HabitDetectionResult process({
@@ -29,11 +28,7 @@ class DoomScrollingDetector extends HabitDetector {
     final handAvailable = handLandmarks != null && handLandmarks.length >= 21 * 3;
 
     if (!faceAvailable) {
-      return HabitDetectionResult(
-        habitId: habitId,
-        confidence: 0,
-        detected: false,
-      );
+      return HabitDetectionResult(habitId: habitId, confidence: 0, detected: false);
     }
 
     final faceProximity = _measureFaceProximity(faceLandmarks, imageWidth, imageHeight);
@@ -41,18 +36,11 @@ class DoomScrollingDetector extends HabitDetector {
     final headStill = _measureHeadStillness(poseAvailable ? poseLandmarks : null);
     final phoneGrip = handAvailable ? _measurePhoneGrip(handLandmarks) : 0.0;
 
-    _faceProximityHistory.add(faceProximity);
-    if (_faceProximityHistory.length > _smoothingWindow) {
-      _faceProximityHistory.removeAt(0);
-    }
+    _proximitySmoother.add(faceProximity);
+    _stillnessSmoother.add(headStill);
 
-    if (faceProximity > 0.5) {
-      _closeFrames++;
-    } else if (_closeFrames > 0) {
-      _closeFrames--;
-    }
-
-    final sustainedCloseScore = (_closeFrames / _minCloseFrames).clamp(0.0, 1.0);
+    final smoothedProximity = _proximitySmoother.average;
+    final smoothedStillness = _stillnessSmoother.average;
 
     const proximityWeight = 0.35;
     const gazeWeight = 0.20;
@@ -60,24 +48,24 @@ class DoomScrollingDetector extends HabitDetector {
     const gripWeight = 0.15;
     const sustainedWeight = 0.10;
 
-    final confidence = faceProximity * proximityWeight +
+    final confidence = smoothedProximity * proximityWeight +
         gazeDown * gazeWeight +
-        headStill * stillnessWeight +
+        smoothedStillness * stillnessWeight +
         phoneGrip * gripWeight +
-        sustainedCloseScore * sustainedWeight;
+        _hysteresis.normalized * sustainedWeight;
 
-    final detected = confidence >= sensitivityThreshold;
+    final detected = _hysteresis.update(confidence >= sensitivityThreshold);
 
     return HabitDetectionResult(
       habitId: habitId,
       confidence: confidence,
       detected: detected,
       signals: {
-        'face_proximity': faceProximity,
+        'face_proximity': smoothedProximity,
         'gaze_down': gazeDown,
-        'head_still': headStill,
+        'head_still': smoothedStillness,
         'phone_grip': phoneGrip,
-        'sustained_score': sustainedCloseScore,
+        'hysteresis': _hysteresis.normalized,
       },
     );
   }
@@ -119,6 +107,9 @@ class DoomScrollingDetector extends HabitDetector {
     return (noseBelowEyes / 0.15).clamp(0.0, 1.0);
   }
 
+  double? _lastNoseX;
+  double? _lastNoseY;
+
   double _measureHeadStillness(List<double>? poseLandmarks) {
     if (poseLandmarks == null || poseLandmarks.length < 5 * 3) return 0.5;
 
@@ -140,9 +131,6 @@ class DoomScrollingDetector extends HabitDetector {
     return movement < 0.005 ? 0.8 :
         movement < 0.01 ? 0.5 : 0.1;
   }
-
-  double? _lastNoseX;
-  double? _lastNoseY;
 
   double _measurePhoneGrip(List<double> handLandmarks) {
     if (handLandmarks.length < 21 * 3) return 0;
@@ -173,8 +161,9 @@ class DoomScrollingDetector extends HabitDetector {
 
   @override
   void reset() {
-    _faceProximityHistory.clear();
-    _closeFrames = 0;
+    _proximitySmoother.clear();
+    _stillnessSmoother.clear();
+    _hysteresis.reset();
     _lastNoseX = null;
     _lastNoseY = null;
   }

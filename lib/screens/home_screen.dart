@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -40,15 +41,34 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 24),
           ...HabitConfig.all.map((habit) => HabitCard(habit: habit)),
           const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: () => context.push('/camera'),
-            icon: const Icon(Icons.videocam),
-            label: const Text('Start Detection'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(56),
-              textStyle: const TextStyle(fontSize: 18),
+          if (!kIsWeb)
+            FilledButton.icon(
+              onPressed: () => context.push('/camera'),
+              icon: const Icon(Icons.videocam),
+              label: const Text('Start Detection'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(56),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
             ),
-          ),
+          if (kIsWeb)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.amber),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Camera detection is not available on web. Use the mobile app for live detection.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () => context.push('/dashboard'),

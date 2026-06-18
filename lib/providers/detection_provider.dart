@@ -6,11 +6,13 @@ import '../database/database.dart';
 import '../detection/detection_engine.dart';
 import '../detection/habit_detection_result.dart';
 import '../detection/habit_detector.dart';
+import '../detection/doom_scrolling_detector.dart';
+import '../detection/eye_rubbing_detector.dart';
+import '../detection/face_touching_detector.dart';
+import '../detection/nail_biting_detector.dart';
 import '../detection/sleeping_detector.dart';
 import '../detection/slouching_detector.dart';
 import '../detection/smoking_detector.dart';
-import '../detection/nail_biting_detector.dart';
-import '../detection/doom_scrolling_detector.dart';
 
 final detectionEngineProvider = Provider<DetectionEngine>((ref) {
   final detectors = <HabitDetector>[
@@ -19,6 +21,8 @@ final detectionEngineProvider = Provider<DetectionEngine>((ref) {
     SmokingDetector(),
     NailBitingDetector(),
     DoomScrollingDetector(),
+    FaceTouchingDetector(),
+    EyeRubbingDetector(),
   ];
 
   final engine = DetectionEngine(detectors: detectors, frameSkip: 3);

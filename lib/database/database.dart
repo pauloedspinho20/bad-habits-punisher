@@ -68,6 +68,8 @@ class AppDatabase extends _$AppDatabase {
     _HabitSeed('smoking', 'Smoking', 'smoking', false, 0.65, 3),
     _HabitSeed('nail_biting', 'Nail Biting', 'nail_biting', false, 0.60, 4),
     _HabitSeed('doom_scrolling', 'Doom Scrolling', 'doom_scrolling', false, 0.50, 5),
+    _HabitSeed('face_touching', 'Face Touching', 'face', false, 0.55, 6),
+    _HabitSeed('eye_rubbing', 'Eye Rubbing', 'eye_rubbing', false, 0.60, 7),
   ];
 
   Future<List<Habit>> getHabits() => select(habits).get();

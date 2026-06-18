@@ -34,7 +34,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   bool _isProcessing = false;
   bool _isRetrying = false;
   bool _isInitializing = true;
-  int _frameCount = 0;
   int _lastProcessTimestamp = 0;
   LandmarkExtractor? _extractor;
   String? _initError;
@@ -82,9 +81,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       if (mounted) setState(() => _isInitializing = false);
     } on MissingPluginException {
       _setInitError(
-        defaultTargetPlatform == TargetPlatform.macOS
-            ? 'Camera not available on macOS. Detection uses simulated data for testing.'
-            : 'Camera plugin not available. Ensure native build is configured correctly.',
+        kIsWeb
+            ? 'Camera not available on web. Use the mobile or desktop app for live detection.'
+            : defaultTargetPlatform == TargetPlatform.macOS
+                ? 'Camera not available on macOS. Detection uses simulated data for testing.'
+                : 'Camera plugin not available. Ensure native build is configured correctly.',
       );
     } catch (e) {
       _setInitError('Camera initialization failed: $e');
@@ -126,7 +127,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     engine.start();
     ref.read(detectionStateProvider.notifier).state = DetectionEngineState.running;
     _isDetecting = true;
-    _frameCount = 0;
     _lastProcessTimestamp = 0;
 
     _detectionSub = engine.onEventsDetected.listen((events) {
@@ -150,7 +150,6 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     _lastProcessTimestamp = now;
     _isProcessing = true;
-    _frameCount++;
 
     _processFrame(image);
   }

@@ -1,3 +1,4 @@
+import 'detection_utils.dart';
 import 'habit_detection_result.dart';
 import 'habit_detector.dart';
 
@@ -8,11 +9,10 @@ class SleepingDetector extends HabitDetector {
   @override
   double sensitivityThreshold = 0.6;
 
-  final _eyeAspectRatios = <double>[];
-  static const int _smoothingWindow = 10;
-
-  int _closedFrames = 0;
-  static const int _minClosedFrames = 15;
+  final SmoothingBuffer _earSmoother = SmoothingBuffer(10);
+  final SmoothingBuffer _headNodSmoother = SmoothingBuffer(8);
+  final SmoothingBuffer _mouthAspectSmoother = SmoothingBuffer(5);
+  final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 15, decay: 3);
 
   @override
   HabitDetectionResult process({
@@ -23,11 +23,7 @@ class SleepingDetector extends HabitDetector {
     required double imageHeight,
   }) {
     if (faceLandmarks == null || faceLandmarks.length < 478 * 3) {
-      return HabitDetectionResult(
-        habitId: habitId,
-        confidence: 0,
-        detected: false,
-      );
+      return HabitDetectionResult(habitId: habitId, confidence: 0, detected: false);
     }
 
     final leftEyeTop = _lm(faceLandmarks, 159);
@@ -44,42 +40,38 @@ class SleepingDetector extends HabitDetector {
         leftEyeLeft == null || leftEyeRight == null ||
         rightEyeTop == null || rightEyeBottom == null ||
         rightEyeLeft == null || rightEyeRight == null) {
-      return HabitDetectionResult(
-        habitId: habitId,
-        confidence: 0,
-        detected: false,
-      );
+      return HabitDetectionResult(habitId: habitId, confidence: 0, detected: false);
     }
 
     final leftEAR = _eyeAspectRatio(leftEyeTop, leftEyeBottom, leftEyeLeft, leftEyeRight);
     final rightEAR = _eyeAspectRatio(rightEyeTop, rightEyeBottom, rightEyeLeft, rightEyeRight);
-    final avgEAR = (leftEAR + rightEAR) / 2;
 
-    _eyeAspectRatios.add(avgEAR);
-    if (_eyeAspectRatios.length > _smoothingWindow) {
-      _eyeAspectRatios.removeAt(0);
-    }
+    final minEAR = leftEAR < rightEAR ? leftEAR : rightEAR;
 
-    final smoothedEAR = _eyeAspectRatios.isEmpty
+    _earSmoother.add(minEAR);
+    final smoothedEAR = _earSmoother.average;
+
+    final eyesClosedScore = smoothedEAR < 0.18
         ? 1.0
-        : _eyeAspectRatios.reduce((a, b) => a + b) / _eyeAspectRatios.length;
-
-    final isEyeClosed = smoothedEAR < 0.2;
-
-    if (isEyeClosed) {
-      _closedFrames++;
-    } else {
-      _closedFrames = 0;
-    }
+        : smoothedEAR < 0.25
+            ? (0.25 - smoothedEAR) / 0.07
+            : 0.0;
 
     final headNodScore = _detectHeadNod(poseLandmarks);
+    _headNodSmoother.add(headNodScore);
+    final smoothedNod = _headNodSmoother.average;
 
-    final eyesClosedScore = (_closedFrames / _minClosedFrames).clamp(0, 1);
-    const eyesWeight = 0.7;
-    const nodWeight = 0.3;
+    final yawnScore = _detectYawn(faceLandmarks);
 
-    final confidence = eyesClosedScore * eyesWeight + headNodScore * nodWeight;
-    final detected = confidence >= sensitivityThreshold && _closedFrames >= _minClosedFrames;
+    const eyesWeight = 0.55;
+    const nodWeight = 0.25;
+    const yawnWeight = 0.20;
+
+    final confidence = eyesClosedScore * eyesWeight +
+        smoothedNod * nodWeight +
+        yawnScore * yawnWeight;
+
+    final detected = _hysteresis.update(confidence >= sensitivityThreshold);
 
     return HabitDetectionResult(
       habitId: habitId,
@@ -87,8 +79,10 @@ class SleepingDetector extends HabitDetector {
       detected: detected,
       signals: {
         'ear': smoothedEAR,
-        'closed_frames': _closedFrames.toDouble(),
-        'head_nod': headNodScore,
+        'eyes_closed_score': eyesClosedScore,
+        'head_nod': smoothedNod,
+        'yawn': yawnScore,
+        'hysteresis': _hysteresis.normalized,
       },
     );
   }
@@ -105,6 +99,28 @@ class SleepingDetector extends HabitDetector {
     return vDist / hDist;
   }
 
+  double _detectYawn(List<double> faceLandmarks) {
+    final upperLip = _lm(faceLandmarks, 13);
+    final lowerLip = _lm(faceLandmarks, 14);
+    final leftMouth = _lm(faceLandmarks, 61);
+    final rightMouth = _lm(faceLandmarks, 291);
+
+    if (upperLip == null || lowerLip == null || leftMouth == null || rightMouth == null) return 0;
+
+    final mouthOpen = _dist(upperLip, lowerLip);
+    final mouthWidth = _dist(leftMouth, rightMouth);
+    if (mouthWidth == 0) return 0;
+
+    final aspect = mouthOpen / mouthWidth;
+    _mouthAspectSmoother.add(aspect);
+    final smoothed = _mouthAspectSmoother.average;
+
+    if (smoothed < 0.08) return 0.0;
+    if (smoothed < 0.15) return (smoothed - 0.08) / 0.07 * 0.5;
+    if (smoothed < 0.30) return 0.5 + (smoothed - 0.15) / 0.15 * 0.5;
+    return 1.0;
+  }
+
   double _dist((double, double, double) a, (double, double, double) b) {
     final dx = a.$1 - b.$1;
     final dy = a.$2 - b.$2;
@@ -112,7 +128,7 @@ class SleepingDetector extends HabitDetector {
   }
 
   double _detectHeadNod(List<double>? poseLandmarks) {
-    if (poseLandmarks == null || poseLandmarks.length < 3 * 3) return 0;
+    if (poseLandmarks == null || poseLandmarks.length < 5 * 3) return 0;
     final nose = _lm(poseLandmarks, 0);
     final leftEye = _lm(poseLandmarks, 2);
     final rightEye = _lm(poseLandmarks, 5);
@@ -121,7 +137,7 @@ class SleepingDetector extends HabitDetector {
     final eyeY = (leftEye.$2 + rightEye.$2) / 2;
     final headPitch = nose.$2 - eyeY;
 
-    return (headPitch / 0.15).abs().clamp(0, 1);
+    return (headPitch / 0.12).abs().clamp(0.0, 1.0);
   }
 
   (double, double, double)? _lm(List<double> landmarks, int index) {
@@ -132,7 +148,9 @@ class SleepingDetector extends HabitDetector {
 
   @override
   void reset() {
-    _eyeAspectRatios.clear();
-    _closedFrames = 0;
+    _earSmoother.clear();
+    _headNodSmoother.clear();
+    _mouthAspectSmoother.clear();
+    _hysteresis.reset();
   }
 }

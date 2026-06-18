@@ -63,6 +63,24 @@ class HabitConfig {
       defaultSensitivity: 0.5,
       isPremium: true,
     ),
+    HabitConfig(
+      id: 'face_touching',
+      name: 'Face Touching',
+      description: 'Detects when you touch your face — common germ-spreading habit',
+      icon: Icons.face,
+      cooldown: Duration(seconds: 10),
+      defaultSensitivity: 0.55,
+      isPremium: true,
+    ),
+    HabitConfig(
+      id: 'eye_rubbing',
+      name: 'Eye Rubbing',
+      description: 'Detects when you rub your eyes — can cause irritation and damage',
+      icon: Icons.remove_red_eye,
+      cooldown: Duration(seconds: 15),
+      defaultSensitivity: 0.6,
+      isPremium: true,
+    ),
   ];
 
   static HabitConfig? fromId(String id) {

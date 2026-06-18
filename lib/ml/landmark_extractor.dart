@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-import 'dart:ui';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -50,7 +47,6 @@ class MlKitExtractor extends LandmarkExtractor {
   Future<void> initialize() async {
     _status = ExtractorStatus.initializing;
     int successes = 0;
-    int total = 0;
 
     try {
       _poseDetector = PoseDetector(
@@ -60,7 +56,6 @@ class MlKitExtractor extends LandmarkExtractor {
     } catch (e) {
       debugPrint('PoseDetector init failed: $e');
     }
-    total++;
 
     try {
       _faceMeshDetector = FaceMeshDetector(
@@ -70,10 +65,8 @@ class MlKitExtractor extends LandmarkExtractor {
     } catch (e) {
       debugPrint('FaceMeshDetector init failed: $e');
     }
-    total++;
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      total++;
       try {
         _handLandmarker = HandLandmarkerPlugin.create(numHands: 1);
         successes++;

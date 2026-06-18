@@ -1,0 +1,122 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run (macOS)",
+      "type": "shell",
+      "command": "flutter run -d macos",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run (web)",
+      "type": "shell",
+      "command": "flutter run -d chrome",
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run (iOS simulator)",
+      "type": "shell",
+      "command": "flutter run -d ios",
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build (macOS release)",
+      "type": "shell",
+      "command": "flutter build macos",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build (web release)",
+      "type": "shell",
+      "command": "flutter build web --wasm",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build (iOS archive)",
+      "type": "shell",
+      "command": "flutter build ios --release",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Analyze",
+      "type": "shell",
+      "command": "flutter analyze",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "flutter test",
+      "group": "test",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Code generation (build_runner)",
+      "type": "shell",
+      "command": "dart run build_runner build --delete-conflicting-outputs",
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Code generation (watch)",
+      "type": "shell",
+      "command": "dart run build_runner watch --delete-conflicting-outputs",
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "flutter clean && flutter pub get",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Update dependencies",
+      "type": "shell",
+      "command": "flutter pub upgrade",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy web (Firebase)",
+      "type": "shell",
+      "command": "flutter build web --wasm && firebase deploy --only hosting",
+      "group": "build",
+      "dependsOn": [],
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
