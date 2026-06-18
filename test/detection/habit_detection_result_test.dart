@@ -4,7 +4,7 @@ import 'package:bad_habits_punisher/detection/habit_detection_result.dart';
 void main() {
   group('HabitDetectionResult', () {
     test('creates a detected result', () {
-      final result = HabitDetectionResult(
+      const result = HabitDetectionResult(
         habitId: 'test',
         confidence: 0.85,
         detected: true,
@@ -18,7 +18,7 @@ void main() {
     });
 
     test('creates a non-detected result with default signals', () {
-      final result = HabitDetectionResult(
+      const result = HabitDetectionResult(
         habitId: 'test',
         confidence: 0.0,
         detected: false,

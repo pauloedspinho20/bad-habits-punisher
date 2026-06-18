@@ -6,9 +6,6 @@ class NailBitingDetector extends HabitDetector {
   @override
   String get habitId => 'nail_biting';
 
-  @override
-  double sensitivityThreshold = 0.6;
-
   final SmoothingBuffer _biteSmoother = SmoothingBuffer(8);
   final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 5, decay: 2);
   final TrajectoryTracker _trajectory = TrajectoryTracker();

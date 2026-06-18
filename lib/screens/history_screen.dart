@@ -65,7 +65,7 @@ class _FilterBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final allHabits = HabitConfig.all;
+    const allHabits = HabitConfig.all;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -77,7 +77,8 @@ class _FilterBar extends ConsumerWidget {
         children: [
           Expanded(
             child: DropdownButtonFormField<String?>(
-              value: habitFilter,
+              key: ValueKey(habitFilter),
+              initialValue: habitFilter,
               decoration: const InputDecoration(
                 labelText: 'Habit',
                 isDense: true,

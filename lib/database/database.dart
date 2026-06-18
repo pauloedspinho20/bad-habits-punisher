@@ -63,13 +63,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static final _seedData = [
-    _HabitSeed('slouching', 'Slouching', 'posture', false, 0.55, 1),
-    _HabitSeed('sleeping', 'Sleeping', 'sleep', false, 0.60, 2),
-    _HabitSeed('smoking', 'Smoking', 'smoking', false, 0.65, 3),
-    _HabitSeed('nail_biting', 'Nail Biting', 'nail_biting', false, 0.60, 4),
-    _HabitSeed('doom_scrolling', 'Doom Scrolling', 'doom_scrolling', false, 0.50, 5),
-    _HabitSeed('face_touching', 'Face Touching', 'face', false, 0.55, 6),
-    _HabitSeed('eye_rubbing', 'Eye Rubbing', 'eye_rubbing', false, 0.60, 7),
+    const _HabitSeed('slouching', 'Slouching', 'posture', false, 0.55, 1),
+    const _HabitSeed('sleeping', 'Sleeping', 'sleep', false, 0.60, 2),
+    const _HabitSeed('smoking', 'Smoking', 'smoking', false, 0.65, 3),
+    const _HabitSeed('nail_biting', 'Nail Biting', 'nail_biting', false, 0.60, 4),
+    const _HabitSeed('doom_scrolling', 'Doom Scrolling', 'doom_scrolling', false, 0.50, 5),
+    const _HabitSeed('face_touching', 'Face Touching', 'face', false, 0.55, 6),
+    const _HabitSeed('eye_rubbing', 'Eye Rubbing', 'eye_rubbing', false, 0.60, 7),
   ];
 
   Future<List<Habit>> getHabits() => select(habits).get();

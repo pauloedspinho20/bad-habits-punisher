@@ -6,8 +6,9 @@ class FaceTouchingDetector extends HabitDetector {
   @override
   String get habitId => 'face_touching';
 
-  @override
-  double sensitivityThreshold = 0.55;
+  FaceTouchingDetector() {
+    sensitivityThreshold = 0.55;
+  }
 
   final SmoothingBuffer _proximitySmoother = SmoothingBuffer(8);
   final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 4, decay: 2);

@@ -8,8 +8,9 @@ class DoomScrollingDetector extends HabitDetector {
   @override
   String get habitId => 'doom_scrolling';
 
-  @override
-  double sensitivityThreshold = 0.5;
+  DoomScrollingDetector() {
+    sensitivityThreshold = 0.5;
+  }
 
   final SmoothingBuffer _proximitySmoother = SmoothingBuffer(20);
   final SmoothingBuffer _stillnessSmoother = SmoothingBuffer(10);
@@ -96,7 +97,9 @@ class DoomScrollingDetector extends HabitDetector {
     final forehead = _lm(faceLandmarks, 10);
 
     if (noseTip == null || leftEye == null ||
-        rightEye == null || chin == null || forehead == null) return 0;
+        rightEye == null || chin == null || forehead == null) {
+      return 0;
+    }
 
     final eyeY = (leftEye.$2 + rightEye.$2) / 2;
     final faceHeight = (forehead.$2 - chin.$2).abs();

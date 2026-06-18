@@ -7,13 +7,12 @@ class _MockDetector extends HabitDetector {
   final String id;
   final bool returnDetected;
 
-  _MockDetector({required this.id, this.returnDetected = false});
+  _MockDetector({required this.id, this.returnDetected = false}) {
+    sensitivityThreshold = 0.5;
+  }
 
   @override
   String get habitId => id;
-
-  @override
-  double sensitivityThreshold = 0.5;
 
   @override
   HabitDetectionResult process({

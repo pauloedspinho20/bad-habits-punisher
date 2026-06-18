@@ -87,7 +87,7 @@ class MlKitExtractor extends LandmarkExtractor {
   @override
   Future<LandmarkData> extract({CameraImage? cameraImage, CameraDescription? camera}) async {
     if (cameraImage == null || camera == null) {
-      return LandmarkData();
+      return const LandmarkData();
     }
 
     List<double>? pose;

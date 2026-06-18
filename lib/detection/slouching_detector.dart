@@ -6,8 +6,9 @@ class SlouchingDetector extends HabitDetector {
   @override
   String get habitId => 'slouching';
 
-  @override
-  double sensitivityThreshold = 0.55;
+  SlouchingDetector() {
+    sensitivityThreshold = 0.55;
+  }
 
   final SmoothingBuffer _headForwardSmoother = SmoothingBuffer(15);
   final SmoothingBuffer _shoulderDropSmoother = SmoothingBuffer(10);

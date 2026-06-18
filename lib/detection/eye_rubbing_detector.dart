@@ -6,9 +6,6 @@ class EyeRubbingDetector extends HabitDetector {
   @override
   String get habitId => 'eye_rubbing';
 
-  @override
-  double sensitivityThreshold = 0.6;
-
   final SmoothingBuffer _proximitySmoother = SmoothingBuffer(6);
   final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 3, decay: 2);
 
@@ -44,7 +41,7 @@ class EyeRubbingDetector extends HabitDetector {
       final fingerDy = tip.$2 - pip.$2;
       final fingerLen = fingerDx * fingerDx + fingerDy * fingerDy;
       if (fingerLen > 0) {
-        final typicalLen = 0.03;
+        const typicalLen = 0.03;
         curlScore += (fingerLen / (typicalLen * typicalLen)).clamp(0.0, 1.0);
         fingerCount++;
       }

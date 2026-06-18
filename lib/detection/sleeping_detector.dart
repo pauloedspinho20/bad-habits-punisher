@@ -6,9 +6,6 @@ class SleepingDetector extends HabitDetector {
   @override
   String get habitId => 'sleeping';
 
-  @override
-  double sensitivityThreshold = 0.6;
-
   final SmoothingBuffer _earSmoother = SmoothingBuffer(10);
   final SmoothingBuffer _headNodSmoother = SmoothingBuffer(8);
   final SmoothingBuffer _mouthAspectSmoother = SmoothingBuffer(5);

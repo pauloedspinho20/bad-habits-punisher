@@ -114,7 +114,7 @@ class _UpgradeSheetContent extends ConsumerWidget {
             data: (offerings) {
               final offering = offerings?.current;
               final monthly = offering?.monthly;
-              if (monthly == null) return _FallbackPurchaseButton();
+              if (monthly == null) return const _FallbackPurchaseButton();
               return _PackageButton(package: monthly);
             },
             loading: () => const CircularProgressIndicator(),
@@ -261,7 +261,7 @@ class _HabitSettingsTile extends ConsumerWidget {
     final isPremium = ref.read(isPremiumProvider);
 
     if (newValue && !isPremium) {
-      final freeLimit = AppConstants.freeHabitLimit;
+      const freeLimit = AppConstants.freeHabitLimit;
       if (currentEnabledCount >= freeLimit) {
         _showLimitReached(ref.context);
         return;
@@ -284,7 +284,7 @@ class _HabitSettingsTile extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Free Limit Reached'),
-        content: Text(
+        content: const Text(
           'You can track up to ${AppConstants.freeHabitLimit} habits on the free tier. '
           'Upgrade to premium to unlock all habits.',
         ),

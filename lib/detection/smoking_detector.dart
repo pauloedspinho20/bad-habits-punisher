@@ -8,8 +8,9 @@ class SmokingDetector extends HabitDetector {
   @override
   String get habitId => 'smoking';
 
-  @override
-  double sensitivityThreshold = 0.65;
+  SmokingDetector() {
+    sensitivityThreshold = 0.65;
+  }
 
   final SmoothingBuffer _proximitySmoother = SmoothingBuffer(10);
   final HysteresisCounter _hysteresis = HysteresisCounter(threshold: 4, decay: 2);
